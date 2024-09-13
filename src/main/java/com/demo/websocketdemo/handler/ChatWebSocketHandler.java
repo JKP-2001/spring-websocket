@@ -10,13 +10,19 @@ import org.springframework.web.socket.TextMessage;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, WebSocketSession> sessions = new HashMap<>();
+
+    public static List<String> userIds = List.of("6d99-9145-4721-8477-1830-d8544b","21a8-5bce-46a4-beb0-ab5b-4b505d","916a-4f28-4e15-a427-45c3-214895");
+    private static int index = 0;
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -38,14 +44,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             String broadcastMessage = payload.substring(10);
             for (WebSocketSession s : sessions.values()) {
                 if (s.isOpen()) {
-                    s.sendMessage(new TextMessage(broadcastMessage));
+                    s.sendMessage(new TextMessage(broadcastMessage + " from: "+ userId));
                 }
             }
         } else if (payload.startsWith("private:")) {
             String[] parts = payload.substring(8).split(":", 2);
             String targetUserId = parts[0];
             String privateMessage = parts[1];
+            log.info("targetUserId {}", targetUserId);
+            log.info("privateMessage {}", privateMessage);
             WebSocketSession targetSession = sessions.get(targetUserId);
+            log.info("targetSession {}", targetSession);
             if (targetSession != null && targetSession.isOpen()) {
                 targetSession.sendMessage(new TextMessage(privateMessage));
             }
@@ -54,8 +63,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        String userId = (String) session.getAttributes().get("userId");
+        String userId = getUserIdFromUrl(session);
         sessions.remove(userId);
+        log.info("sessions {}", sessions.keySet());
+    }
+
+    public static String getUser(WebSocketSession session) {
+
+        return userIds.get(index++);
+
     }
 
     public static String getUserIdFromUrl(WebSocketSession session) {
